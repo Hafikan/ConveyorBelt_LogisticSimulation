@@ -3,14 +3,7 @@
 
 [simulation]
 duration = 120.0          # Simülasyon süresi (saniye)
-snapshot_interval = 2.0   # Snapshot aralığı (saniye)
-
-[main_conveyor]
-id = "MAIN_CONVEYOR"
-length = 50.0             # Metre
-speed = 0.8               # Metre/saniye
-start_position = [0, 10]  # (x, y)
-end_position = [50, 10]   # (x, y)
+snapshot_interval = 1.0   # Snapshot aralığı (saniye)
 
 [packet]
 default_length = 0.3      # Metre
@@ -30,23 +23,83 @@ FEEDER_B = "#3498DB"      # Mavi
 FEEDER_C = "#2ECC71"      # Yeşil
 FEEDER_D = "#F39C12"      # Turuncu
 
-# Feeder Lines Konfigürasyonu
-# Her feeder için ayrı tablo
+# Segment renkleri
+[visualization.segment_colors]
+slow = "#E74C3C"          # Kırmızı - yavaş
+normal = "#3498DB"        # Mavi - normal
+fast = "#2ECC71"          # Yeşil - hızlı
+
+# =============================================================================
+# ANA HAT: Birden fazla segment'ten oluşan konveyör hattı
+# Segment'ler sırayla birbirine bağlıdır (0 -> 1 -> 2 -> ...)
+# direction: "horizontal" (yatay, varsayılan) veya "vertical" (dikey)
+# =============================================================================
+
+[[conveyor_segments]]
+id = "SEGMENT_1"
+length = 3.0              # Metre
+speed = 0.5               # Metre/saniye (yavaş - giriş bölgesi)
+direction = "horizontal"
+description = "Giriş Bölgesi"
+
+[[conveyor_segments]]
+id = "SEGMENT_2"
+length = 3.0              # Metre
+speed = 1.0               # Metre/saniye (hızlı - ana taşıma)
+direction = "horizontal"
+description = "Hızlı Taşıma"
+
+[[conveyor_segments]]
+id = "SEGMENT_3"
+length = 3.0              # Metre
+speed = 0.3               # Metre/saniye (çok yavaş - tarama/kontrol)
+direction = "horizontal"
+description = "Tarama İstasyonu"
+
+[[conveyor_segments]]
+id = "SEGMENT_4"
+length = 3.0              # Metre
+speed = 0.6               # Metre/saniye
+direction = "vertical"    # Dikey segment (yukarı/aşağı)
+description = "Dikey Yükselme"
+
+[[conveyor_segments]]
+id = "SEGMENT_5"
+length = 3.0              # Metre
+speed = 0.8               # Metre/saniye
+direction = "vertical"    # Dikey segment
+description = "Dikey Çıkış"
+
+[[conveyor_segments]]
+id = "SEGMENT_6"
+length = 3.0              # Metre
+speed = 0.7               # Metre/saniye
+direction = "horizontal"  # Yatay segment (dikey segmentlerden sonra)
+description = "Çıkış Bölgesi"
+
+# =============================================================================
+# FEEDER LINES - Birden fazla feeder
+# connection_segment: Hangi segment'e bağlı (0-indexed)
+# connection_offset: Segment başından itibaren mesafe (metre)
+# =============================================================================
 
 [[feeders]]
 id = "FEEDER_A"
-production_rate = 0.5     # paket/saniye (her 2 saniyede 1 paket)
-connection_point = [5, 5] # (x, y) - x: konveyör üzerindeki giriş pozisyonu
+production_rate = 0.4     # paket/saniye (her 2.5 saniyede 1 paket)
+connection_segment = 0    # İlk segment'e bağlı (SEGMENT_1)
+connection_offset = 1.5   # Segment ortası
 max_queue_size = 100
 
 [[feeders]]
 id = "FEEDER_B"
-production_rate = 0.4     # paket/saniye (her 2.5 saniyede 1 paket)
-connection_point = [20, 5]
+production_rate = 0.3     # paket/saniye (her ~3.3 saniyede 1 paket)
+connection_segment = 1    # SEGMENT_2'ye bağlı
+connection_offset = 1.5   # Segment ortası
 max_queue_size = 100
 
 [[feeders]]
 id = "FEEDER_C"
-production_rate = 0.5     # paket/saniye (her 2 saniyede 1 paket)
-connection_point = [30, 5]
+production_rate = 0.25    # paket/saniye (her 4 saniyede 1 paket)
+connection_segment = 2    # SEGMENT_3'e bağlı (yavaş tarama bölgesi)
+connection_offset = 1.5   # Segment ortası
 max_queue_size = 100

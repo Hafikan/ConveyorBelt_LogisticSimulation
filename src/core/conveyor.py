@@ -9,24 +9,28 @@ class Conveyor:
                  length: float, # Meter
                  speed:float = 0.5, # Meter/second
                  start_position: Tuple[float,float] = (0,0),
-                 end_position: Optional[Tuple[float,float]] = None
+                 end_position: Optional[Tuple[float,float]] = None,
+                 min_gap: float = 0.5,  # Paketler arası minimum mesafe
+                 default_packet_length: float = 0.3  # Varsayılan paket uzunluğu
                 ):
-    
+
         self.env = env
         self.id = id
         self.length = length
-        self.speed = speed 
+        self.speed = speed
         self.start_pos = start_position
+        self.min_gap = min_gap
+        self.default_packet_length = default_packet_length
 
         if end_position is None:
             self.end_pos = (self.start_pos[0] + length , self.start_pos[1] + length)
         else:
             self.end_pos = end_position
 
-        
+
         self.packets: List[Packet] = []
 
-        self.capacity = self._calculate_belt_capacity()
+        self.capacity = self._calculate_belt_capacity(self.default_packet_length, self.min_gap)
 
         self.total_packets_processed = 0
         self.total_packets_on_process = 0
@@ -97,11 +101,10 @@ class Conveyor:
         # Giriş pozisyonunu konveyör sınırları içinde tut
         entry_position = max(0.0, min(entry_position, self.length))
 
-        if not self.has_space_at(entry_position, packet.length):
+        if not self.has_space_at(entry_position, packet.length, self.min_gap):
             return False
 
-        packet.enter_conveyor(self.id, self.env.now)
-        packet.position = entry_position  # Paketi giriş pozisyonuna yerleştir
+        packet.enter_conveyor(self.id, self.env.now, entry_position)
 
         self.packets.append(packet)
         self.total_packets_on_process += 1

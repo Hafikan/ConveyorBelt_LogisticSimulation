@@ -1,4 +1,4 @@
-# Konveyör Bant Lojistik Davranış Simülasyonu
+w# Konveyör Bant Lojistik Davranış Simülasyonu
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![SimPy](https://img.shields.io/badge/SimPy-4.1.1-green.svg)](https://simpy.readthedocs.io/)
@@ -69,7 +69,27 @@ Kapasite = 50 / (0.3 + 0.5) = 62.5 ≈ 62 paket
 
 ## Sistem Mimarisi
 
-### Temel Bileşenler
+### Multi-Segment Konveyör Hattı
+
+Sistem, farklı hızlara ve yönlere sahip segmentlerden oluşan bir konveyör hattı kullanır:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     MULTI-SEGMENT KONVEYÖR HATTI                        │
+│                                                                         │
+│  SEGMENT_1    SEGMENT_2    SEGMENT_3         SEGMENT_6                  │
+│  (0.5 m/s)    (1.0 m/s)    (0.3 m/s)         (0.7 m/s)                  │
+│  ═══════════►═══════════►═══════════►┐    ┌═══════════►                 │
+│      ▲            ▲            ▲      │    │                            │
+│      │            │            │      │    │  SEGMENT_5                 │
+│  FEEDER_A    FEEDER_B    FEEDER_C     │    │  (0.8 m/s)                 │
+│                                       │    ▲                            │
+│                              SEGMENT_4│    │                            │
+│                              (0.6 m/s)▼────┘                            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Temel Bileşenler (Eski Mimari)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -88,18 +108,31 @@ Kapasite = 50 / (0.3 + 0.5) = 62.5 ≈ 62 paket
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│     Packet      │     │    Conveyor     │     │   FeederLine    │
+│     Packet      │     │  ConveyorLine   │     │   FeederLine    │
 ├─────────────────┤     ├─────────────────┤     ├─────────────────┤
 │ - id            │     │ - id            │     │ - id            │
-│ - length        │     │ - length        │     │ - production_rate│
-│ - position      │     │ - speed         │     │ - target_conveyor│
+│ - length        │     │ - segments[]    │     │ - production_rate│
+│ - position      │     │ - total_length  │     │ - target_conveyor│
 │ - source_feeder │     │ - capacity      │     │ - queue         │
 │ - path_history  │     │ - packets[]     │     │ - is_blocked    │
 ├─────────────────┤     ├─────────────────┤     ├─────────────────┤
-│ + enter_conveyor│     │ + accept_packet │     │ + start_production│
-│ + start_waiting │     │ + has_space_at  │     │ + transfer_process│
-│ + stop_waiting  │     │ + get_utilization│    │ + get_statistics │
+│ + enter_conveyor│     │ + add_segment   │     │ + start_production│
+│ + start_waiting │     │ + accept_packet │     │ + transfer_process│
+│ + stop_waiting  │     │ + get_speed_at  │     │ + get_statistics │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
+
+┌─────────────────┐
+│ ConveyorSegment │
+├─────────────────┤
+│ - id            │
+│ - length        │
+│ - speed         │
+│ - direction     │  ← "horizontal" veya "vertical"
+│ - start_offset  │
+├─────────────────┤
+│ + has_space_at  │
+│ + get_utilization│
+└─────────────────┘
 ```
 
 ## Kurulum
@@ -139,26 +172,26 @@ Kapasite = 50 / (0.3 + 0.5) = 62.5 ≈ 62 paket
 
 ### Temel Kullanım
 
-Simülasyonu varsayılan ayarlarla çalıştırmak için:
+Multi-segment simülasyonu çalıştırmak için:
 
 ```bash
-python src/mainfeeder.py
+python src/main_multiline.py
 ```
 
 ### Programatik Kullanım
 
 ```python
-from src.mainfeeder import FeederSimulation, load_config
+from src.main_multiline import MultiSegmentSimulation, load_config
 
 # Varsayılan config ile
-sim = FeederSimulation()
+sim = MultiSegmentSimulation()
 sim.setup()
 sim.run()
 sim.print_statistics()
 
 # Özel config ile
 config = load_config("config/custom_simulation.toml")
-sim = FeederSimulation(config)
+sim = MultiSegmentSimulation(config)
 sim.setup()
 sim.run(duration=60.0)  # 60 saniyelik simülasyon
 ```
@@ -168,10 +201,11 @@ sim.run(duration=60.0)  # 60 saniyelik simülasyon
 Simülasyon tamamlandıktan sonra otomatik olarak oluşturulan grafikler:
 
 ```python
-sim.visualize_system_layout()      # Sistem düzeni
-sim.visualize_statistics()          # İstatistik grafikleri
-sim.visualize_snapshot_timeline()   # Paket zaman çizgisi
-sim.visualize_snapshot_frames()     # Animasyon frame'leri
+sim.visualize_system_layout()         # 2D sistem düzeni (horizontal + vertical segmentler)
+sim.visualize_executive_dashboard()   # KPI dashboard
+sim.visualize_snapshot_frames()       # Zaman serisi snapshot'ları
+sim.visualize_analysis()              # Segment bazlı analiz
+sim.visualize_live()                  # Canlı animasyon
 ```
 
 ## Konfigürasyon
@@ -182,15 +216,7 @@ Tüm simülasyon parametreleri `config/simulation.toml` dosyasından yönetilir:
 # Simülasyon Ayarları
 [simulation]
 duration = 120.0          # Simülasyon süresi (saniye)
-snapshot_interval = 2.0   # Snapshot aralığı (saniye)
-
-# Ana Konveyör Ayarları
-[main_conveyor]
-id = "MAIN_CONVEYOR"
-length = 50.0             # Metre
-speed = 0.8               # Metre/saniye
-start_position = [0, 10]  # (x, y) koordinatları
-end_position = [50, 10]   # (x, y) koordinatları
+snapshot_interval = 1.0   # Snapshot aralığı (saniye)
 
 # Paket Varsayılan Özellikleri
 [packet]
@@ -212,35 +238,64 @@ FEEDER_B = "#3498DB"      # Mavi
 FEEDER_C = "#2ECC71"      # Yeşil
 FEEDER_D = "#F39C12"      # Turuncu
 
+# Segment Renkleri (hıza göre)
+[visualization.segment_colors]
+slow = "#E74C3C"          # Kırmızı - yavaş (<0.4 m/s)
+normal = "#3498DB"        # Mavi - normal
+fast = "#2ECC71"          # Yeşil - hızlı (>=0.8 m/s)
+
+# Multi-Segment Konveyör Hattı
+[[conveyor_segments]]
+id = "SEGMENT_1"
+length = 3.0              # Metre
+speed = 0.5               # Metre/saniye
+direction = "horizontal"  # veya "vertical"
+description = "Giriş Bölgesi"
+
+[[conveyor_segments]]
+id = "SEGMENT_2"
+length = 3.0
+speed = 1.0
+direction = "horizontal"
+description = "Hızlı Taşıma"
+
+# ... daha fazla segment eklenebilir
+
 # Feeder Line Tanımları
 [[feeders]]
 id = "FEEDER_A"
-production_rate = 0.5     # paket/saniye (her 2 saniyede 1 paket)
-connection_point = [2, 5] # Ana konveyöre bağlantı noktası
+production_rate = 0.4     # paket/saniye
+connection_segment = 0    # Hangi segmente bağlı (0-indexed)
+connection_offset = 1.5   # Segment başından mesafe (metre)
 max_queue_size = 100
 
 [[feeders]]
 id = "FEEDER_B"
-production_rate = 0.4     # paket/saniye (her 2.5 saniyede 1 paket)
-connection_point = [5, 5]
-max_queue_size = 100
-
-[[feeders]]
-id = "FEEDER_C"
-production_rate = 0.5     # paket/saniye (her 2 saniyede 1 paket)
-connection_point = [8, 5]
+production_rate = 0.3
+connection_segment = 1
+connection_offset = 1.5
 max_queue_size = 100
 ```
 
-### Yeni Feeder Ekleme
+### Yeni Segment Ekleme
 
-Config dosyasına yeni bir `[[feeders]]` bloğu ekleyerek kolayca yeni feeder tanımlayabilirsiniz:
+```toml
+[[conveyor_segments]]
+id = "SEGMENT_NEW"
+length = 3.0
+speed = 0.7
+direction = "vertical"    # Dikey segment
+description = "Yeni Bölge"
+```
+
+### Yeni Feeder Ekleme
 
 ```toml
 [[feeders]]
 id = "FEEDER_D"
 production_rate = 0.33    # Her 3 saniyede 1 paket
-connection_point = [15, 5]
+connection_segment = 2    # 3. segmente bağlı
+connection_offset = 1.5   # Segment ortasında
 max_queue_size = 50
 ```
 
@@ -248,39 +303,39 @@ max_queue_size = 50
 
 Simülasyon sonunda `output/plots/` dizininde aşağıdaki dosyalar oluşturulur:
 
-### 1. Sistem Düzeni (`iteration2_system_layout.png`)
+### 1. Sistem Düzeni (`multisegment_layout.png`)
 
-![Sistem Düzeni](output/plots/iteration2_system_layout.png)
+![Sistem Düzeni](output/plots/multisegment_layout.png)
 
-Ana konveyör, feeder line'lar, paketler ve sistem parametrelerini gösteren anlık görüntü.
+2D görünümde multi-segment konveyör hattı, feeder'lar ve paketler.
 
 **İçerik:**
-- Ana konveyör (gri bant)
-- Feeder line'lar (renkli dikey çizgiler)
+- Segmentler (hıza göre renklendirilmiş: kırmızı=yavaş, mavi=normal, yeşil=hızlı)
+- Horizontal ve vertical segmentler
+- Feeder line'lar (sarı border = bloke durumda)
 - Paketler (kaynak feeder'a göre renklendirilmiş)
-- Kuyruk uzunlukları
-- Sistem parametreleri bilgi kutusu
+- Segment bilgileri (hız, uzunluk)
 
-### 2. İstatistik Grafikleri (`iteration2_statistics.png`)
+### 2. Executive Dashboard (`executive_dashboard.png`)
 
-![İstatistikler](output/plots/iteration2_statistics.png)
+![Dashboard](output/plots/executive_dashboard.png)
 
-Dört panelli kapsamlı istatistik görünümü:
+KPI özet paneli:
 
 | Panel | İçerik |
 |-------|--------|
-| Sol Üst | Feeder kuyruk uzunlukları zaman serisi |
-| Sağ Üst | Üretim vs Aktarım karşılaştırması |
-| Sol Alt | Ana konveyör doluluk oranı |
-| Sağ Alt | Performans özeti tablosu |
+| Feeder Verimliliği | Her feeder'ın aktif çalışma oranı |
+| Segment Dolulukları | Her segmentin doluluk yüzdesi |
+| Throughput | Birim zamanda işlenen paket sayısı |
+| Özet Metrikler | Toplam üretim, aktarım, kuyruk |
 
-### 3. Zaman Çizgisi (`iteration2_timeline.png`)
+### 3. Snapshot Frame'leri (`snapshot_frames.png`)
 
-Tüm paketlerin konveyör üzerindeki hareketini gösteren zaman-pozisyon grafiği. Her çizgi bir paketi temsil eder ve kaynak feeder'a göre renklendirilmiştir.
+1 saniyelik aralıklarla alınan 2D anlık görüntüler. Sistemin zaman içindeki evrimini gösterir.
 
-### 4. Snapshot Frame'leri (`iteration2_frames.png`)
+### 4. Segment Analizi (`multisegment_analysis.png`)
 
-Simülasyon boyunca belirli aralıklarla alınan anlık görüntüler. Sistemin zaman içindeki evrimini gösterir.
+Segment bazlı detaylı analiz grafikleri.
 
 ## Ölçüm Metrikleri
 
@@ -349,22 +404,24 @@ ConveyorBelt_LogisticSimulation/
 │
 ├── output/
 │   └── plots/                # Oluşturulan grafikler
-│       ├── iteration2_system_layout.png
-│       ├── iteration2_statistics.png
-│       ├── iteration2_timeline.png
-│       └── iteration2_frames.png
+│       ├── multisegment_layout.png
+│       ├── multisegment_analysis.png
+│       ├── executive_dashboard.png
+│       └── snapshot_frames.png
 │
 ├── src/
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── packet.py         # Paket veri modeli
-│   │   ├── conveyor.py       # Konveyör sınıfı
+│   │   ├── conveyor.py       # Tek segment konveyör (geriye uyumluluk)
+│   │   ├── conveyor_line.py  # Multi-segment konveyör hattı
 │   │   └── feeder.py         # Feeder Line sınıfı
 │   │
-│   └── mainfeeder.py         # Ana simülasyon dosyası
+│   └── main_multiline.py     # Ana simülasyon dosyası
 │
 ├── .venv/                    # Python sanal ortamı
 ├── .gitignore
+├── CLAUDE.md                 # Claude Code bağlam dosyası
 ├── README.md
 └── requirements.txt          # Python bağımlılıkları
 ```
@@ -374,11 +431,29 @@ ConveyorBelt_LogisticSimulation/
 | Modül | Dosya | Açıklama |
 |-------|-------|----------|
 | `Packet` | `src/core/packet.py` | Paket veri modeli. Boyut, pozisyon, kaynak, yol geçmişi ve bekleme süresi bilgilerini tutar. |
-| `Conveyor` | `src/core/conveyor.py` | Konveyör bant sınıfı. Paket kabulü, hareket simülasyonu, kapasite hesaplama ve doluluk takibi yapar. |
-| `FeederLine` | `src/core/feeder.py` | Besleme hattı sınıfı. Paket üretimi, kuyruk yönetimi, blokaj durumu ve transfer işlemlerini yönetir. |
-| `FeederSimulation` | `src/mainfeeder.py` | Ana simülasyon orkestratörü. Sistem kurulumu, çalıştırma ve görselleştirme işlevlerini içerir. |
+| `Conveyor` | `src/core/conveyor.py` | Tek segment konveyör sınıfı (geriye uyumluluk için). |
+| `ConveyorLine` | `src/core/conveyor_line.py` | Multi-segment konveyör hattı. Farklı hız ve yönlere sahip segmentler. |
+| `ConveyorSegment` | `src/core/conveyor_line.py` | Tek segment sınıfı. Hız, uzunluk, yön bilgilerini tutar. |
+| `FeederLine` | `src/core/feeder.py` | Besleme hattı sınıfı. Paket üretimi, kuyruk yönetimi, blokaj durumu. |
+| `MultiSegmentSimulation` | `src/main_multiline.py` | Ana simülasyon orkestratörü. 2D görselleştirme dahil. |
 
 ## Gelecek Geliştirmeler
+
+### Tamamlanan Özellikler
+
+- [x] **Multi-Segment Konveyör Hattı**
+  - Farklı hızlara sahip segmentler
+  - Horizontal ve vertical segment desteği
+  - 2D layout görselleştirme
+
+- [x] **Gelişmiş Görselleştirme**
+  - Executive dashboard
+  - Canlı animasyon (matplotlib)
+  - Snapshot frame'leri
+
+- [x] **Darboğaz Analizi**
+  - Segment bazlı doluluk oranları
+  - Feeder verimlilik metrikleri
 
 ### Planlanan Özellikler
 
@@ -394,18 +469,15 @@ ConveyorBelt_LogisticSimulation/
 
 - [ ] **Gelişmiş Metrikler**
   - Deadlock tespiti ve önleme
-  - Darboğaz analizi
   - Enerji tüketimi simülasyonu
 
-- [ ] **Gerçek Zamanlı Görselleştirme**
-  - Canlı animasyon
+- [ ] **Web Tabanlı Dashboard**
   - İnteraktif kontrol paneli
-  - Web tabanlı dashboard
+  - Real-time monitoring
 
 - [ ] **Optimizasyon Modülleri**
   - Genetik algoritma ile parametre optimizasyonu
   - Makine öğrenmesi tabanlı tahminleme
-  - Simulated annealing
 
 ## Katkıda Bulunma
 

@@ -23,14 +23,15 @@ class Packet:
         if not self.id:
             raise ValueError("Packet ID can't be empty")
         
-    def enter_conveyor(self, conveyor_id:str, time: float):
+    def enter_conveyor(self, conveyor_id:str, time: float, entry_position: float = 0.0):
         self.current_conveyor = conveyor_id
         self.entered_conveyor_at = time
-        self.position = 0.0
+        self.position = entry_position
         self.path_history.append(
             {
                 "conveyor":conveyor_id,
-                "entered_at":time
+                "entered_at":time,
+                "entry_position": entry_position
             }
         )
 

@@ -3,47 +3,56 @@ Feeder Line: Ana konveyöre paket besleyen kaynak hatlar
 """
 
 import simpy
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Union
 from .packet import Packet
 from .conveyor import Conveyor
+from .conveyor_line import ConveyorLine
 
 
 class FeederLine:
     """
     Feeder Line - Paket üreten ve ana konveyöre besleyen hat.
-    
+
     Özellikler:
     - Belirli frekansta paket üretir
     - Ana konveyörde yer yoksa bekler (bloke olur)
     - Ürettiği paketleri kuyruğa alır
+    - Hem tek Conveyor hem de ConveyorLine ile çalışabilir
     """
-    
+
     def __init__(self,
                  env: simpy.Environment,
                  id: str,
-                 target_conveyor: Conveyor,
+                 target_conveyor: Union[Conveyor, ConveyorLine],
                  production_rate: float = 0.2,  # paket/saniye (varsayılan: her 5 saniyede 1)
-                 connection_point: Tuple[float, float] = (0, 0),
-                 max_queue_size: int = 100
+                 entry_position: float = 0.0,  # Global giriş pozisyonu
+                 max_queue_size: int = 100,
+                 connection_point: Tuple[float, float] = None  # Geriye uyumluluk için
                 ):
         """
         Args:
             env: SimPy environment
             id: Feeder ID (örn: "FEEDER_001")
-            target_conveyor: Hedef ana konveyör
+            target_conveyor: Hedef ana konveyör veya konveyör hattı
             production_rate: Üretim hızı (paket/saniye)
-            connection_point: Ana konveyöre bağlantı noktası (x, y)
+            entry_position: Hat üzerindeki global giriş pozisyonu (metre)
             max_queue_size: Maksimum kuyruk boyutu
+            connection_point: (Eski API) Ana konveyöre bağlantı noktası (x, y)
         """
         self.env = env
         self.id = id
         self.target_conveyor = target_conveyor
         self.production_rate = production_rate
-        self.connection_point = connection_point
         self.max_queue_size = max_queue_size
 
-        # Konveyör üzerindeki giriş pozisyonu (connection_point.x koordinatı)
-        self.entry_position = connection_point[0]
+        # Giriş pozisyonunu belirle
+        if connection_point is not None:
+            # Geriye uyumluluk: eski API kullanılmış
+            self.entry_position = connection_point[0]
+            self.connection_point = connection_point
+        else:
+            self.entry_position = entry_position
+            self.connection_point = (entry_position, 0)
 
         # İstatistikler
         self.queue: List[Packet] = []  # Bekleyen paketler
