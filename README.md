@@ -1,4 +1,4 @@
-w# Konveyör Bant Lojistik Davranış Simülasyonu
+# Konveyör Bant Lojistik Davranış Simülasyonu
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![SimPy](https://img.shields.io/badge/SimPy-4.1.1-green.svg)](https://simpy.readthedocs.io/)
