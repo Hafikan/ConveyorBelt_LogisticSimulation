@@ -50,61 +50,93 @@ class Conveyor:
         return int(self.length / totalArea_per_packet)
     
 
-    def has_space(self, packet_length: float, min_gap:float=0.5)   ->  int:
+    def has_space_at(self, entry_position: float, packet_length: float = 0.5, min_gap: float = 0.5) -> bool:
         """
-            Konveyörde yer var mı yok mu
+        Belirli bir pozisyonda paket için yer var mı kontrol eder.
 
-            Args:
-                packet_length
-                min_gap
+        Args:
+            entry_position: Paketin gireceği pozisyon (konveyör üzerinde metre)
+            packet_length: Paket uzunluğu (metre)
+            min_gap: Minimum paket arası mesafe (metre)
+
+        Returns:
+            True eğer o pozisyonda yer varsa
         """
-
         if not self.packets:
             return True
-        
-        last_packet = max(self.packets, key=lambda p: p.position)
+
         req_space = packet_length + min_gap
 
-        return last_packet.position >= req_space
+        # entry_position etrafında yeterli boşluk var mı kontrol et
+        for p in self.packets:
+            # Paket pozisyonu ile giriş noktası arasındaki mesafe
+            distance = abs(p.position - entry_position)
+            if distance < req_space:
+                return False
+
+        return True
+
+    def has_space(self, packet_length: float, min_gap: float = 0.5) -> bool:
+        """
+        Konveyör başında (pozisyon 0) yer var mı kontrol eder.
+        Geriye uyumluluk için korundu.
+        """
+        return self.has_space_at(0.0, packet_length, min_gap)
     
-    def accept_packet(self, packet: Packet) -> bool:
-        if not self.has_space(packet.length):
+    def accept_packet(self, packet: Packet, entry_position: float = 0.0) -> bool:
+        """
+        Paketi konveyöre kabul eder.
+
+        Args:
+            packet: Eklenecek paket
+            entry_position: Paketin giriş pozisyonu (varsayılan: 0, konveyör başı)
+
+        Returns:
+            True eğer paket kabul edildiyse
+        """
+        # Giriş pozisyonunu konveyör sınırları içinde tut
+        entry_position = max(0.0, min(entry_position, self.length))
+
+        if not self.has_space_at(entry_position, packet.length):
             return False
-        
+
         packet.enter_conveyor(self.id, self.env.now)
+        packet.position = entry_position  # Paketi giriş pozisyonuna yerleştir
 
         self.packets.append(packet)
-
-
         self.total_packets_on_process += 1
 
         self.env.process(self._move_packet(packet))
 
-    def _move_packet(self,packet:Packet):
+        return True
 
+    def _move_packet(self, packet: Packet):
         """
-
-            Paketi konveyörde hareket ettir
-
+        Paketi konveyörde hareket ettir.
+        Paketin mevcut pozisyonundan konveyör sonuna kadar taşır.
         """
-        travel_time = self.length / self.speed
-        start_time = self.env.now
+        # Kalan mesafeyi hesapla (paketin mevcut pozisyonundan sona kadar)
+        remaining_distance = self.length - packet.position
 
-        
-        # Animasyon için konveyör plakası minimal tutuldu
-        steps = 100
+        if remaining_distance <= 0:
+            self._packet_reached_end(packet)
+            return
+
+        travel_time = remaining_distance / self.speed
+
+        # Animasyon için adım sayısını kalan mesafeye orantılı yap
+        steps = max(10, int(100 * (remaining_distance / self.length)))
         step_time = travel_time / steps
-        step_distance = self.length / steps
+        step_distance = remaining_distance / steps
 
         for step in range(steps):
             yield self.env.timeout(step_time)
             packet.position += step_distance
 
-            if packet.position > self.length:
+            if packet.position >= self.length:
                 packet.position = self.length
-                break 
+                break
 
-        
         self._packet_reached_end(packet)
 
 

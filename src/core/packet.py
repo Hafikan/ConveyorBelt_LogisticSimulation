@@ -69,7 +69,10 @@ class Packet:
             0.0 - 1.0 arası değer ( 1 hiç bekleme yok )
         """
 
-        total_time = self.get_total_travel_time
+        total_time = self.get_total_travel_time(current_time)
+        if total_time == 0:
+            return 1.0
+        return 1.0 - (self.total_wait_time / total_time)
 
     
     def __repr__(self):

@@ -1,0 +1,52 @@
+# Conveyor Belt Logistic Simulation Configuration
+# ================================================
+
+[simulation]
+duration = 120.0          # Simülasyon süresi (saniye)
+snapshot_interval = 2.0   # Snapshot aralığı (saniye)
+
+[main_conveyor]
+id = "MAIN_CONVEYOR"
+length = 50.0             # Metre
+speed = 0.8               # Metre/saniye
+start_position = [0, 10]  # (x, y)
+end_position = [50, 10]   # (x, y)
+
+[packet]
+default_length = 0.3      # Metre
+default_width = 0.3       # Metre
+default_height = 0.3      # Metre
+min_gap = 0.5             # Paketler arası minimum mesafe (metre)
+
+[visualization]
+theme = "dark"
+dpi = 150
+output_dir = "output/plots"
+
+# Feeder renkleri
+[visualization.colors]
+FEEDER_A = "#E74C3C"      # Kırmızı
+FEEDER_B = "#3498DB"      # Mavi
+FEEDER_C = "#2ECC71"      # Yeşil
+FEEDER_D = "#F39C12"      # Turuncu
+
+# Feeder Lines Konfigürasyonu
+# Her feeder için ayrı tablo
+
+[[feeders]]
+id = "FEEDER_A"
+production_rate = 0.5     # paket/saniye (her 2 saniyede 1 paket)
+connection_point = [5, 5] # (x, y) - x: konveyör üzerindeki giriş pozisyonu
+max_queue_size = 100
+
+[[feeders]]
+id = "FEEDER_B"
+production_rate = 0.4     # paket/saniye (her 2.5 saniyede 1 paket)
+connection_point = [20, 5]
+max_queue_size = 100
+
+[[feeders]]
+id = "FEEDER_C"
+production_rate = 0.5     # paket/saniye (her 2 saniyede 1 paket)
+connection_point = [30, 5]
+max_queue_size = 100

@@ -1,0 +1,47 @@
+# Konveyör Bant Lojistik Davranış Simülasyonu - Bağımlılıklar
+# ===========================================================
+#
+# Kurulum: pip install -r requirements.txt
+#
+# Python 3.11+ gereklidir (tomllib için)
+#
+
+# Discrete Event Simulation Framework
+# SimPy, kesikli olay simülasyonu için kullanılır.
+# Konveyör hareketleri, paket üretimi ve transfer işlemleri
+# SimPy process'leri olarak modellenir.
+simpy>=4.1.1
+
+# Scientific Computing
+# NumPy, sayısal hesaplamalar ve veri işleme için kullanılır.
+# İstatistik hesaplama ve grafik verisi hazırlama işlemlerinde kullanılır.
+numpy>=2.0.0
+
+# Visualization
+# Matplotlib, tüm görselleştirmeler için kullanılır:
+# - Sistem düzeni grafikleri
+# - İstatistik grafikleri (kuyruk, doluluk, üretim/aktarım)
+# - Zaman çizgisi grafikleri
+# - Snapshot frame'leri
+matplotlib>=3.9.0
+
+# Image Processing (Matplotlib dependency)
+# Pillow, grafik dosyalarının kaydedilmesi için gereklidir.
+pillow>=10.0.0
+
+# =============================================================================
+# NOT: tomllib Python 3.11+ ile birlikte gelir (built-in).
+# TOML config dosyası okuma için ek paket gerekmez.
+# =============================================================================
+
+# =============================================================================
+# Geliştirme Bağımlılıkları (Opsiyonel)
+# -----------------------------------------------------------------------------
+# Aşağıdaki paketler geliştirme sürecinde faydalı olabilir:
+#
+# pytest>=7.0.0          # Unit test framework
+# pytest-cov>=4.0.0      # Test coverage
+# black>=23.0.0          # Code formatter
+# flake8>=6.0.0          # Linter
+# mypy>=1.0.0            # Type checker
+# =============================================================================
